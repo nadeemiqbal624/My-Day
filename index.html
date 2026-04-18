@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Islamic Daily Routine Tracker</title>
+    <!-- Google Fonts: Noto Nastaliq Urdu & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Light Top Strip -->
+        <div class="top-strip"></div>
+        <!-- Main Content Area (Views will be rendered here) -->
+        <main id="main-content">
+            <!-- Dynamic content injected by JS -->
+        </main>
+
+        <!-- Bottom Navigation (Mobile friendly) -->
+        <nav class="glass bottom-nav">
+            <button class="nav-btn active" data-view="daily">
+                <i class="fa-solid fa-house icon"></i>
+                <span>ہوم</span>
+            </button>
+            <button class="nav-btn" data-view="qaza">
+                <i class="fa-solid fa-clipboard-list icon"></i>
+                <span>قضا</span>
+            </button>
+            <button class="nav-btn" data-view="tasbeeh">
+                <i class="fa-solid fa-circle-dot icon"></i>
+                <span>تسبیح</span>
+            </button>
+            <button class="nav-btn" data-view="analytics">
+                <i class="fa-solid fa-chart-simple icon"></i>
+                <span>رپورٹس</span>
+            </button>
+            <button class="nav-btn" data-view="setup">
+                <i class="fa-solid fa-gear icon"></i>
+                <span>سیٹنگز</span>
+            </button>
+        </nav>
+
+        <!-- Category Modal Overlay -->
+        <div id="category-modal" class="modal-overlay">
+            <div class="glass modal-content">
+                <button class="close-btn" onclick="closeCategoryModal()"><i class="fa-solid fa-xmark"></i></button>
+                <h2 id="modal-title">Category</h2>
+                <div id="modal-task-list"></div>
+            </div>
+        </div>
+
+        <!-- Prayer Times & Location Modal Overlay -->
+        <div id="prayer-modal" class="modal-overlay">
+            <div class="glass modal-content">
+                <button class="close-btn" onclick="closePrayerModal()"><i class="fa-solid fa-xmark"></i></button>
+                <h2 style="margin-bottom: 20px; font-size: 1.5rem; color: var(--primary); text-align: center; font-family:'Noto Nastaliq Urdu',serif;">اوقاتِ نماز</h2>
+                
+                <div class="form-container" style="padding: 15px; margin-bottom: 20px; border-width: 1px;">
+                    <label style="color:var(--text-main); font-size:0.85rem; margin-bottom: 8px; display:block;">شہر کا نام (انگریزی میں لکھیں)</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="modal-prayer-city" style="flex:1; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff;" />
+                        <button class="btn primary-btn" style="width:auto; padding: 0.5rem 1rem;" onclick="saveModalCitySettings()">محفوظ</button>
+                    </div>
+                </div>
+                
+                <div id="full-prayer-times-list" style="font-family:'Inter',sans-serif;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
