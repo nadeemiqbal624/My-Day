@@ -14,6 +14,7 @@
     <div id="app">
         <!-- Light Top Strip -->
         <div class="top-strip"></div>
+
         <!-- Main Content Area (Views will be rendered here) -->
         <main id="main-content">
             <!-- Dynamic content injected by JS -->
@@ -59,11 +60,15 @@
                 <h2 style="margin-bottom: 20px; font-size: 1.5rem; color: var(--primary); text-align: center; font-family:'Noto Nastaliq Urdu',serif;">اوقاتِ نماز</h2>
                 
                 <div class="form-container" style="padding: 15px; margin-bottom: 20px; border-width: 1px;">
-                    <label style="color:var(--text-main); font-size:0.85rem; margin-bottom: 8px; display:block;">شہر کا نام (انگریزی میں لکھیں)</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="text" id="modal-prayer-city" style="flex:1; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff;" />
+                    <label style="color:var(--text-main); font-size:0.85rem; margin-bottom: 8px; display:block;">شہر کا نام یا لوکیشن</label>
+                    <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                        <input type="text" id="modal-prayer-city" placeholder="شہر کا نام (مثلاً Islamabad)" style="flex:1; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff;" />
                         <button class="btn primary-btn" style="width:auto; padding: 0.5rem 1rem;" onclick="saveModalCitySettings()">محفوظ</button>
                     </div>
+                    <button class="btn" style="width:100%; padding: 0.6rem; background: rgba(251, 191, 36, 0.1); border: 1px solid var(--primary); color: var(--primary); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="useMyLocation()">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                        <span>موجودہ لوکیشن استعمال کریں</span>
+                    </button>
                 </div>
                 
                 <div id="full-prayer-times-list" style="font-family:'Inter',sans-serif;"></div>

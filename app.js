@@ -39,18 +39,14 @@ const Views = {
     daily() {
         return `
             <div class="view-section">
-                <!-- Hijri Date Banner -->
-                <div id="hijri-date-banner" style="text-align:center; margin-bottom: 8px; font-size: 0.85rem; color: var(--primary); font-family:'Noto Nastaliq Urdu', serif; letter-spacing: 0.5px;"></div>
-
                 <!-- Prayer Times Header Widget -->
-                <div id="prayer-times-widget" class="glass" style="padding: 10px 15px; margin-bottom: 20px; border-width: 1px; cursor:pointer;" onclick="openPrayerModal()">
-                    <div id="prayer-times-content" style="display: flex; justify-content: space-between; align-items:flex-end; font-size: 0.85rem; color: var(--text-main); font-family: 'Inter', sans-serif;">
-                        <span style="width: 100%; text-align: center; color: var(--text-muted); font-size: 0.8rem;">اوقات معلوم کیے جا رہے ہیں...</span>
+                <div id="prayer-times-widget" class="glass" style="padding: 15px; margin-bottom: 20px; border-width: 1px; cursor:pointer;" onclick="openPrayerModal()">
+                    <div id="prayer-times-content" style="display: flex; flex-direction: column; align-items: center; gap: 15px; font-family: 'Inter', sans-serif;">
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">اوقات معلوم کیے جا رہے ہیں...</span>
                     </div>
-                    <div style="text-align:center; font-size:0.7rem; color:var(--text-muted); margin-top:8px; display:block;">(مکمل اوقاتِ نماز کے لیے یہاں کلک کریں)</div>
                 </div>
 
-                <h2 style="font-size: 1.2rem; margin-top: 10px;">آج کا چیک لسٹ</h2>
+                <h2 style="font-size: 1.2rem; margin-top: 10px; font-family: 'Noto Nastaliq Urdu', serif;">آج کا چیک لسٹ</h2>
                 <div id="daily-list">
                     <!-- Daily tasks will render here -->
                 </div>
@@ -58,9 +54,19 @@ const Views = {
         `;
     },
     setup() {
+        const isLight = document.body.classList.contains('light-theme');
         return `
              <div class="view-section">
                 <h2>معمولات کی ترتیب</h2>
+
+                <!-- Theme Toggle -->
+                <div class="glass" style="padding: 15px; margin-bottom: 20px; border-width: 1px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.9rem; color: var(--text-main);">ایپ کا تھیم (Light/Dark)</span>
+                    <button id="theme-toggle" class="btn" style="width: auto; padding: 5px 15px; background: rgba(251, 191, 36, 0.1); border: 1px solid var(--primary); color: var(--primary); border-radius: 20px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px;" onclick="toggleTheme()">
+                        <i class="fa-solid ${isLight ? 'fa-sun' : 'fa-moon'}"></i>
+                        <span>${isLight ? 'لائٹ موڈ' : 'ڈارک موڈ'}</span>
+                    </button>
+                </div>
 
                 <!-- Backup & Restore -->
                 <h3 style="margin-bottom: 10px; margin-top: 0; font-size: 1rem; color: var(--primary);">ڈیٹا بیک اپ اور ریسٹور</h3>
@@ -71,6 +77,35 @@ const Views = {
                         <button class="btn primary-btn" style="flex:1; background: rgba(212,175,55,0.15); color: var(--primary);" onclick="document.getElementById('import-file').click()">📂 لوڈ (Import)</button>
                     </div>
                     <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)" />
+                </div>
+
+                <!-- Prayer Times Settings -->
+                <h3 style="margin-bottom: 10px; margin-top: 20px; font-size: 1rem; color: var(--primary);">اوقاتِ نماز کی سیٹنگز</h3>
+                <div class="glass" style="padding: 15px; margin-bottom: 20px; border-width: 1px;">
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-size: 0.85rem;">حساب کتاب کا طریقہ (Method)</label>
+                        <select id="prayer-method" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 5px; color: #fff; font-family: inherit;">
+                            <option value="1">University of Islamic Sciences, Karachi</option>
+                            <option value="2">Islamic Society of North America (ISNA)</option>
+                            <option value="3">Muslim World League (MWL)</option>
+                            <option value="4">Umm al-Qura University, Makkah</option>
+                            <option value="5">Egyptian General Authority of Survey</option>
+                            <option value="8">Gulf Region</option>
+                            <option value="9">Kuwait</option>
+                            <option value="10">Qatar</option>
+                            <option value="11">Majlis Ugama Islam Singapura, Singapore</option>
+                            <option value="12">Union Organization Islamique de France</option>
+                            <option value="13">Diyanet İşleri Başkanlığı, Turkey</option>
+                            <option value="14">Spiritual Administration of Muslims of Russia</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 5px; font-size: 0.85rem;">فقہ (عصر کے لیے)</label>
+                        <select id="prayer-school" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 5px; color: #fff; font-family: inherit;">
+                            <option value="1">حنفی (Hanafi)</option>
+                            <option value="0">شافعی، مالکی، حنبلی (Standard)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="glass form-container" style="border-width: 1px;">
@@ -93,6 +128,7 @@ const Views = {
                             <select id="task-type">
                                 <option value="checkbox">صرف ٹک کریں</option>
                                 <option value="counter">تعداد (گِن کر)</option>
+                                <option value="hybrid">گننا اور ٹک کرنا دونوں</option>
                             </select>
                         </div>
                         <div class="form-group" id="target-count-group" style="display: none;">
@@ -104,6 +140,13 @@ const Views = {
                 </div>
                 
                 <h3 class="section-title" style="margin-top: 1.5rem; margin-bottom: 0.8rem;">موجودہ معمولات</h3>
+                
+                <!-- Search Bar -->
+                <div class="glass" style="margin-bottom: 15px; padding: 5px 15px; display: flex; align-items: center; border-width: 1px;">
+                    <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted); margin-left: 10px;"></i>
+                    <input type="text" id="task-search" placeholder="تلاش کریں..." style="background: none; border: none; padding: 8px; color: var(--text-main); font-family: inherit; width: 100%; outline: none;" oninput="renderSetupTasks()" />
+                </div>
+
                 <div id="setup-tasks-list">
                     <!-- Configured tasks rendered here -->
                 </div>
@@ -119,14 +162,22 @@ const Views = {
                 
                 <h3 style="margin-top:30px; font-size: 1.1rem; color: var(--primary); text-align: center;">سابقہ قضا شامل کریں (بلک)</h3>
                 <div class="glass form-container" style="margin-top:10px; border-width: 1px;">
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
-                        <div style="flex:1">
-                            <label style="color:var(--text-main); font-size:0.8rem;">سال</label>
-                            <input type="number" id="bulk-years" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit;" />
+                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:15px;">
+                        <div>
+                            <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">سال</label>
+                            <input type="number" id="bulk-years" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
                         </div>
-                        <div style="flex:1">
-                            <label style="color:var(--text-main); font-size:0.8rem;">مہینے</label>
-                            <input type="number" id="bulk-months" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit;" />
+                        <div>
+                            <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">مہینے</label>
+                            <input type="number" id="bulk-months" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
+                        </div>
+                        <div>
+                            <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">ہفتے</label>
+                            <input type="number" id="bulk-weeks" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
+                        </div>
+                        <div>
+                            <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">دن</label>
+                            <input type="number" id="bulk-days" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
                         </div>
                     </div>
                     <button class="btn primary-btn" onclick="addBulkQaza()">تمام نمازوں میں شامل کریں</button>
@@ -237,13 +288,32 @@ function bindEvents(viewName) {
     }
     
     if (viewName === 'setup') {
+        const prayerMethod = document.getElementById('prayer-method');
+        const prayerSchool = document.getElementById('prayer-school');
+        
+        if (prayerMethod) {
+            prayerMethod.value = localStorage.getItem('islamic_method') || '1';
+            prayerMethod.addEventListener('change', async (e) => {
+                localStorage.setItem('islamic_method', e.target.value);
+                await PrayerTimes.fetchLocationAndTimes();
+            });
+        }
+        
+        if (prayerSchool) {
+            prayerSchool.value = localStorage.getItem('islamic_school') || '1';
+            prayerSchool.addEventListener('change', async (e) => {
+                localStorage.setItem('islamic_school', e.target.value);
+                await PrayerTimes.fetchLocationAndTimes();
+            });
+        }
+
         const form = document.getElementById('setup-form');
         const typeSelect = document.getElementById('task-type');
         const targetGroup = document.getElementById('target-count-group');
         
         if (typeSelect) {
             typeSelect.addEventListener('change', (e) => {
-                if (e.target.value === 'counter') {
+                if (e.target.value === 'counter' || e.target.value === 'hybrid') {
                     targetGroup.style.display = 'block';
                     document.getElementById('task-target').setAttribute('required', 'true');
                 } else {
@@ -259,7 +329,7 @@ function bindEvents(viewName) {
                 const name = document.getElementById('task-name').value;
                 const category = document.getElementById('task-category').value;
                 const type = document.getElementById('task-type').value;
-                const target = type === 'counter' ? parseInt(document.getElementById('task-target').value) : null;
+                const target = (type === 'counter' || type === 'hybrid') ? parseInt(document.getElementById('task-target').value) : null;
                 
                 State.tasks.push({
                     id: Date.now().toString(),
@@ -284,10 +354,17 @@ function renderSetupTasks() {
     const list = document.getElementById('setup-tasks-list');
     if (!list) return;
     
-    const displayTasks = State.tasks.filter(t => !(t.category === 'faraidh' && t.isSystem));
+    const searchInput = document.getElementById('task-search');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    let displayTasks = State.tasks.filter(t => !(t.category === 'faraidh' && t.isSystem));
+    
+    if (searchTerm) {
+        displayTasks = displayTasks.filter(t => t.name.toLowerCase().includes(searchTerm));
+    }
     
     if (displayTasks.length === 0) {
-        list.innerHTML = `<p style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">کوئی کسٹم معمول سیٹ نہیں کیا گیا۔</p>`;
+        list.innerHTML = `<p style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">${searchTerm ? 'کوئی نتیجہ نہیں ملا۔' : 'کوئی کسٹم معمول سیٹ نہیں کیا گیا۔'}</p>`;
         return;
     }
     
@@ -296,7 +373,7 @@ function renderSetupTasks() {
             <div class="task-info">
                 <strong>${t.name}</strong>
                 <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">
-                    ${getCategoryName(t.category)} | ${t.type === 'counter' ? `تعداد: ${t.target}` : 'چیک لسٹ'}
+                    ${getCategoryName(t.category)} | ${t.type === 'counter' ? `تعداد: ${t.target}` : (t.type === 'hybrid' ? `تعداد یا چیک لسٹ: ${t.target}` : 'چیک لسٹ')}
                 </span>
             </div>
             ${t.isSystem ? '<span style="color:var(--text-muted); font-size: 0.8rem;">(لازمی)</span>' : `<button class="delete-btn" onclick="deleteTask('${t.id}')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #ff6b6b;">🗑️</button>`}
@@ -343,10 +420,15 @@ function checkMidnightReset() {
     const todayStr = getTodayString();
     let hasChanges = false;
     
-    // Convert previous pending logs to qaza
+    // Convert previous pending logs to qaza (Only for Faraidh)
     State.logs.forEach(log => {
         if(log.status === 'pending' && log.date !== todayStr) {
-            log.status = 'qaza';
+            const task = State.tasks.find(t => t.id === log.taskId);
+            if (task && task.category === 'faraidh') {
+                log.status = 'qaza';
+            } else {
+                log.status = 'missed'; // Other tasks are just missed, not qaza
+            }
             hasChanges = true;
         }
     });
@@ -378,11 +460,28 @@ window.renderLog = function(log, isDone) {
     let actionHTML = '';
     if (isDone) {
         actionHTML = `<span style="color: var(--primary); font-weight: bold;">✔ مکمل</span>`;
+    } else if (task.category === 'adhkar' && (task.type === 'counter' || task.type === 'hybrid')) {
+        actionHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.8rem; color: var(--text-muted);">${log.completedCount} / ${task.target}</span>
+                <button class="btn primary-btn" style="padding: 4px 12px; width: auto; font-size: 0.85rem;" onclick="openTasbeehModal('${log.id}')">تسبیح</button>
+            </div>
+        `;
     } else if (task.type === 'counter') {
         actionHTML = `
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 0.8rem;">${log.completedCount} / ${task.target}</span>
                 <button class="btn primary-btn" style="padding: 4px 12px; width: auto; font-size: 0.85rem;" onclick="incrementTask('${log.id}')">+</button>
+            </div>
+        `;
+    } else if (task.type === 'hybrid') {
+        actionHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 5px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 10px; margin-left: 5px;">
+                    <span style="font-size: 0.8rem;">${log.completedCount} / ${task.target}</span>
+                    <button class="btn primary-btn" style="padding: 4px 10px; width: auto; font-size: 0.8rem;" onclick="incrementTask('${log.id}')">+</button>
+                </div>
+                <button class="btn primary-btn" style="padding: 4px 12px; width: auto; font-size: 0.8rem; background: rgba(251, 191, 36, 0.1); border: 1px solid var(--primary); color: var(--primary);" onclick="completeTask('${log.id}', this)">مکمل</button>
             </div>
         `;
     } else {
@@ -509,6 +608,135 @@ function refreshViewAfterTaskChange(taskId) {
     }
 }
 
+window.openTasbeehModal = function(logId) {
+    const log = State.logs.find(l => l.id === logId);
+    if(!log) return;
+    const task = State.tasks.find(t => t.id === log.taskId);
+    if(!task) return;
+
+    // Save context for modal
+    window.currentTasbeehLogId = logId;
+    
+    // Check if modal exists, if not create it
+    let modal = document.getElementById('tasbeeh-modal');
+    if(!modal) {
+        modal = document.createElement('div');
+        modal.id = 'tasbeeh-modal';
+        modal.className = 'modal';
+        modal.style.display = 'none'; // Hidden by default
+        modal.innerHTML = `
+            <div class="modal-content glass" style="width: 100vw; height: 100vh; max-width: none; border-radius: 0; border: none; display: flex; flex-direction: column; padding: 0; pointer-events: auto;">
+                <div style="padding: 20px; text-align: center; background: rgba(251, 191, 36, 0.1); border-bottom: 1px solid var(--card-border); position: relative; pointer-events: auto;">
+                    <button id="tasbeeh-close-btn" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: var(--text-main); font-size: 1.8rem; cursor: pointer; padding: 15px; z-index: 10001; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;" onclick="event.stopPropagation(); window.closeTasbeehModal()">✕</button>
+                    <h2 id="tasbeeh-name" style="margin: 0; font-size: 1.5rem; color: var(--primary);">ذکر</h2>
+                </div>
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 20px;">
+                    <div id="tasbeeh-counter-display" style="font-size: 8rem; font-weight: bold; font-family: 'Inter', sans-serif; color: var(--text-main); text-shadow: 0 0 30px rgba(251, 191, 36, 0.4);">0</div>
+                    <div id="tasbeeh-target-display" style="font-size: 1.5rem; color: var(--text-muted);">ہدف: 100</div>
+                    
+                    <button id="tasbeeh-main-btn" style="width: 280px; height: 280px; border-radius: 50%; border: 12px solid var(--primary); background: rgba(251, 191, 36, 0.05); color: var(--primary); font-size: 4rem; cursor: pointer; transition: all 0.1s ease; outline: none; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);" onclick="handleTasbeehClick()">
+                        <i class="fa-solid fa-fingerprint"></i>
+                    </button>
+                    
+                    <div style="display: flex; gap: 20px; width: 100%; max-width: 400px; margin-top: 20px;">
+                        <button class="btn primary-btn" style="flex: 1; font-size: 1.1rem; padding: 15px;" onclick="resetTasbeehCounter()">دوبارہ شروع</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Add CSS for modal if not present
+        if(!document.getElementById('tasbeeh-modal-styles')) {
+            const style = document.createElement('style');
+            style.id = 'tasbeeh-modal-styles';
+            style.innerHTML = `
+                #tasbeeh-main-btn:active {
+                    transform: scale(0.92);
+                    background: rgba(251, 191, 36, 0.2);
+                    box-shadow: 0 0 30px rgba(251, 191, 36, 0.4);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    // Update modal content
+    document.getElementById('tasbeeh-name').innerText = task.name;
+    document.getElementById('tasbeeh-counter-display').innerText = log.completedCount;
+    document.getElementById('tasbeeh-target-display').innerText = `ہدف: ${task.target}`;
+    
+    // Show modal
+    modal.style.display = 'flex';
+    modal.style.zIndex = '9999';
+    modal.classList.add('active');
+};
+
+window.handleTasbeehClick = function() {
+    const logId = window.currentTasbeehLogId;
+    const log = State.logs.find(l => l.id === logId);
+    if(!log) return;
+    const task = State.tasks.find(t => t.id === log.taskId);
+    if(!task) return;
+
+    log.completedCount += 1;
+    document.getElementById('tasbeeh-counter-display').innerText = log.completedCount;
+
+    // Haptic feedback if available
+    if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(50);
+    }
+
+    if(log.completedCount >= task.target) {
+        log.status = 'done';
+        State.saveLogs();
+        
+        // Celebration effect could go here
+        setTimeout(() => {
+            closeTasbeehModal();
+            refreshViewAfterTaskChange(log.taskId);
+            
+            // Success alert (optional)
+            // alert(`ماشاءاللہ! آپ نے ${task.name} مکمل کر لیا۔`);
+        }, 300);
+    } else {
+        State.saveLogs();
+    }
+};
+
+window.resetTasbeehCounter = function() {
+    if(confirm('کیا آپ گنتی دوبارہ صفر سے شروع کرنا چاہتے ہیں؟')) {
+        const logId = window.currentTasbeehLogId;
+        const log = State.logs.find(l => l.id === logId);
+        if(log) {
+            log.completedCount = 0;
+            document.getElementById('tasbeeh-counter-display').innerText = '0';
+            State.saveLogs();
+        }
+    }
+};
+
+window.closeTasbeehModal = function() {
+    const modal = document.getElementById('tasbeeh-modal');
+    if(modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+    // Refresh the home page to show updated count on the card
+    renderDailyTasks();
+    
+    // If the category modal is open, refresh it too
+    const categoryModal = document.getElementById('category-modal');
+    if(categoryModal && categoryModal.classList.contains('active')) {
+        const logId = window.currentTasbeehLogId;
+        const log = State.logs.find(l => l.id === logId);
+        if(log) {
+            const task = State.tasks.find(t => t.id === log.taskId);
+            if(task) window.openCategoryModal(task.category || 'other');
+        }
+    }
+};
+
 window.completeTask = function(logId, btnElement) {
     const log = State.logs.find(l => l.id === logId);
     if(log) {
@@ -567,7 +795,11 @@ function renderQazaTasks() {
     const list = document.getElementById('qaza-list');
     if (!list) return;
 
-    const qazaLogs = State.logs.filter(l => l.status === 'qaza');
+    const qazaLogs = State.logs.filter(l => {
+        if (l.status !== 'qaza') return false;
+        const task = State.tasks.find(t => t.id === l.taskId);
+        return task && task.category === 'faraidh';
+    });
     const faraidhTasks = State.tasks.filter(t => t.category === 'faraidh' && t.isSystem);
     
     // Path definitions for 5 pie wedges forming a complete circle of radius 150px
@@ -617,36 +849,7 @@ function renderQazaTasks() {
         </div>
     `;
 
-    const otherQazaLogs = qazaLogs.filter(l => {
-        const t = State.tasks.find(tk => tk.id === l.taskId);
-        return t && (!t.isSystem || t.category !== 'faraidh');
-    });
-    
-    if(otherQazaLogs.length > 0) {
-        html += `<h4 style="margin-top:20px; margin-bottom:10px; font-size: 1rem; color: var(--primary); text-align: center;">دیگر معمولات (قضا)</h4>`;
-        
-        const groupedOther = otherQazaLogs.reduce((acc, log) => {
-            if(!acc[log.taskId]) acc[log.taskId] = [];
-            acc[log.taskId].push(log);
-            return acc;
-        }, {});
-        
-        for (const [taskId, logs] of Object.entries(groupedOther)) {
-            const task = State.tasks.find(t => t.id === taskId);
-            if(!task) continue;
-            
-            html += `
-                <div class="glass task-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 8px; cursor: pointer;" onclick="openQazaModal('${taskId}')">
-                    <div>
-                        <strong style="display: block; font-size: 1rem;">${task.name}</strong>
-                    </div>
-                    <div style="color: #ff6b6b; font-weight: bold; font-family: 'Inter', sans-serif;">
-                        ${logs.length} قضا
-                    </div>
-                </div>
-            `;
-        }
-    } else if (totalFaraidhMissed === 0 && otherQazaLogs.length === 0) {
+    if (totalFaraidhMissed === 0) {
         html += `<p style="text-align:center; color: var(--primary); font-size: 0.95rem; margin-top: 1rem;">کوئی قضا آپ کے ذمے باقی نہیں ہے۔ ماشاءاللہ!</p>`;
     }
     
@@ -868,13 +1071,13 @@ function renderChart() {
                 {
                     label: 'مکمل',
                     data: doneData,
-                    backgroundColor: '#d4af37', // Gold
+                    backgroundColor: '#fbbf24', // Amber Gold
                     borderRadius: 4
                 },
                 {
                     label: 'قضا',
                     data: qazaData,
-                    backgroundColor: '#4a5568', // Slate / Contrasting with Navy
+                    backgroundColor: '#059669', // Emerald Green
                     borderRadius: 4
                 }
             ]
@@ -902,20 +1105,59 @@ function renderChart() {
 // App Initialization
 function initApp() {
     checkMidnightReset();
+    initTheme();
     // Initial Route
     navigateTo('daily');
+}
+
+// ─────────────── Theme Management ───────────────
+window.toggleTheme = function() {
+    const isLight = document.body.classList.toggle('light-theme');
+    localStorage.setItem('islamic_theme', isLight ? 'light' : 'dark');
+    updateThemeIcon();
+};
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('islamic_theme');
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+    }
+    updateThemeIcon();
+}
+
+function updateThemeIcon() {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    const icon = btn.querySelector('i');
+    const text = btn.querySelector('span');
+    
+    if (document.body.classList.contains('light-theme')) {
+        if(icon) {
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+        }
+        if(text) text.textContent = 'لائٹ موڈ';
+    } else {
+        if(icon) {
+            icon.classList.remove('fa-sun');
+            icon.classList.add('fa-moon');
+        }
+        if(text) text.textContent = 'ڈارک موڈ';
+    }
 }
 
 window.addBulkQaza = function() {
     const years = parseInt(document.getElementById('bulk-years').value) || 0;
     const months = parseInt(document.getElementById('bulk-months').value) || 0;
+    const weeks = parseInt(document.getElementById('bulk-weeks').value) || 0;
+    const days = parseInt(document.getElementById('bulk-days').value) || 0;
     
-    if (years === 0 && months === 0) {
-        alert('براہ کرم سال یا مہینوں کی تعداد درج کریں۔');
+    if (years === 0 && months === 0 && weeks === 0 && days === 0) {
+        alert('براہ کرم دورانیہ (سال، مہینے، ہفتے یا دن) درج کریں۔');
         return;
     }
     
-    const totalDays = (years * 365) + (months * 30);
+    const totalDays = (years * 365) + (months * 30) + (weeks * 7) + days;
     
     if (confirm(`کیا آپ واقعی ${totalDays} دنوں کی قضا نمازیں (فرائض) میں شامل کرنا چاہتے ہیں؟`)) {
         State.tasks.forEach(task => {
@@ -928,6 +1170,8 @@ window.addBulkQaza = function() {
         
         document.getElementById('bulk-years').value = 0;
         document.getElementById('bulk-months').value = 0;
+        document.getElementById('bulk-weeks').value = 0;
+        document.getElementById('bulk-days').value = 0;
         
         if (typeof renderQazaTasks === 'function') renderQazaTasks();
         alert(`${totalDays} دنوں کی نمازیں قضا کھاتے میں شامل کر دی گئی ہیں۔`);
@@ -944,11 +1188,23 @@ const PrayerTimes = {
     
     async fetchLocationAndTimes() {
         try {
-            // Using City name allows perfect precision when IP fetching isn't correct.
+            const lat = localStorage.getItem('islamic_lat');
+            const lng = localStorage.getItem('islamic_lng');
             const city = localStorage.getItem('islamic_city') || 'Islamabad';
-            const country = 'Pakistan'; // Defaulting country to Pakistan since UI is urdu, Aladhan handles others if city is unique
+            const country = 'Pakistan';
+            const method = localStorage.getItem('islamic_method') || '1';
+            const school = localStorage.getItem('islamic_school') || '1';
             
-            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${Math.floor(Date.now() / 1000)}?city=${city}&country=${country}&method=1`);
+            let url;
+            if (lat && lng) {
+                // Fetch by coordinates
+                url = `https://api.aladhan.com/v1/timings/${Math.floor(Date.now() / 1000)}?latitude=${lat}&longitude=${lng}&method=${method}&school=${school}`;
+            } else {
+                // Fetch by city
+                url = `https://api.aladhan.com/v1/timingsByCity/${Math.floor(Date.now() / 1000)}?city=${city}&country=${country}&method=${method}&school=${school}`;
+            }
+
+            const res = await fetch(url);
             const json = await res.json();
 
             if (json && json.data && json.data.timings) {
@@ -957,7 +1213,7 @@ const PrayerTimes = {
                     timings: json.data.timings,
                     meta: json.data.meta,
                     hijri: json.data.date ? json.data.date.hijri : null,
-                    city: city
+                    city: lat && lng ? 'موجودہ لوکیشن' : city
                 });
                 return true;
             } else {
@@ -992,7 +1248,6 @@ window.renderHijriDate = function() {
         const h = PrayerTimes.data.hijri;
         const monthIndex = parseInt(h.month.number) - 1;
         const monthName = hijriMonths[monthIndex] || h.month.ar;
-        banner.textContent = `${h.day} ذی القعدہ ${h.year}ھ`;
         // Use Urdu month name
         banner.textContent = `${h.day} ${monthName} ${h.year} ھ`;
     } else if (PrayerTimes.data) {
@@ -1012,7 +1267,6 @@ window.renderPrayerTimesWidget = async function() {
         await PrayerTimes.init();
         if (PrayerTimes.data && PrayerTimes.data.timings) {
             const t = PrayerTimes.data.timings;
-            // Format 24h to 12h
             const fmt = (timeStr) => {
                 let [h, m] = timeStr.split(':');
                 h = parseInt(h);
@@ -1044,29 +1298,81 @@ window.renderPrayerTimesWidget = async function() {
                 }
             }
 
+            // Hijri Date Construction
+            const hijriMonths = ['محرم','صفر','ربیع الاول','ربیع الثانی','جمادی الاول','جمادی الثانی','رجب','شعبان','رمضان','شوال','ذو القعدہ','ذو الحجہ'];
+            let hijriStr = '';
+            if (PrayerTimes.data.hijri) {
+                const h = PrayerTimes.data.hijri;
+                const monthName = hijriMonths[parseInt(h.month.number) - 1] || h.month.ar;
+                hijriStr = `${h.day} ${monthName} ${h.year}ھ`;
+            }
+
+            // English Date Construction in Urdu
+            const urduMonths = ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'];
+            const englishDateUrdu = `${now.getDate()} ${urduMonths[now.getMonth()]} ${now.getFullYear()}ء`;
+
             content.innerHTML = `
-                <div style="text-align: center; flex:1;"><strong style="display:block; color:var(--text-muted); font-size:0.75rem; font-family:'Noto Nastaliq Urdu', serif; margin-bottom: 4px;">طلوعِ آفتاب</strong>${fmt(t.Sunrise)}</div>
-                <div style="text-align: center; flex:1; border-left: 1px solid rgba(212, 175, 55, 0.3); border-right: 1px solid rgba(212, 175, 55, 0.3); padding: 0 5px;">
-                    <strong style="display:block; color:var(--primary); font-size:0.9rem; font-family:'Noto Nastaliq Urdu', serif; margin-bottom: 4px;">${nextP.name}</strong>
+                <!-- Right Side: Hijri & Sunrise -->
+                <div style="flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: flex-end;">
+                    <div style="color: var(--primary); font-family: 'Noto Nastaliq Urdu', serif; font-size: 0.7rem; margin-bottom: 2px; white-space: nowrap;">${hijriStr}</div>
+                    <div style="height: 1px; background: linear-gradient(90deg, transparent, var(--card-border), transparent); margin-bottom: 5px;"></div>
+                    <span style="color: var(--text-muted); font-size: 0.7rem; font-family: 'Noto Nastaliq Urdu', serif; display: block;">طلوعِ آفتاب</span>
+                    <span style="font-size: 0.85rem; font-weight: 600;">${fmt(t.Sunrise)}</span>
+                </div>
+
+                <!-- Center: Next Prayer -->
+                <div style="flex: 1.2; text-align: center; border-left: 1px solid rgba(251, 191, 36, 0.2); border-right: 1px solid rgba(251, 191, 36, 0.2); padding: 0 5px; display: flex; flex-direction: column; justify-content: center;">
+                    <strong style="display:block; color:var(--primary); font-size:0.9rem; font-family:'Noto Nastaliq Urdu', serif; margin-bottom: 2px;">${nextP.name}</strong>
                     <span style="font-size: 1.1rem; font-weight: bold; font-family: 'Inter', sans-serif;">${fmt(nextP.time)}</span>
                 </div>
-                <div style="text-align: center; flex:1;"><strong style="display:block; color:var(--text-muted); font-size:0.75rem; font-family:'Noto Nastaliq Urdu', serif; margin-bottom: 4px;">غروبِ آفتاب</strong>${fmt(t.Sunset)}</div>
+
+                <!-- Left Side: English Date & Sunset -->
+                <div style="flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: flex-end;">
+                    <div style="color: var(--primary); font-family: 'Noto Nastaliq Urdu', serif; font-size: 0.7rem; margin-bottom: 2px; white-space: nowrap;">${englishDateUrdu}</div>
+                    <div style="height: 1px; background: linear-gradient(90deg, transparent, var(--card-border), transparent); margin-bottom: 5px;"></div>
+                    <span style="color: var(--text-muted); font-size: 0.7rem; font-family: 'Noto Nastaliq Urdu', serif; display: block;">غروبِ آفتاب</span>
+                    <span style="font-size: 0.85rem; font-weight: 600;">${fmt(t.Sunset)}</span>
+                </div>
             `;
-            // Update hijri date banner after timings are loaded
-            renderHijriDate();
+            // Add custom style to the container for horizontal layout
+            content.style.flexDirection = 'row';
+            content.style.justifyContent = 'space-between';
+            content.style.alignItems = 'stretch';
+            content.style.gap = '5px';
         } else {
-            content.innerHTML = `<span style="width:100%; text-align:center; font-size:0.8rem;">انٹرنیٹ کینکشن میں خرابی ہے۔</span>`;
+            content.innerHTML = `
+                <div style="width:100%; text-align:center;">
+                    <span style="font-size:0.8rem; display:block; margin-bottom:5px;">انٹرنیٹ کنکشن میں خرابی ہے۔</span>
+                    <button class="btn primary-btn" style="padding: 4px 10px; font-size: 0.7rem; width: auto;" onclick="renderPrayerTimesWidget()">دوبارہ کوشش کریں</button>
+                </div>
+            `;
         }
     } catch(err) {
-        let msg = "براہ کرم پیج ریفریش کریں اور لوکیشن (Location) کی اجازت دیں۔";
-        content.innerHTML = `<span style="font-size:0.85rem; color:#ff6b6b; text-align:center; width:100%; font-family:'Noto Nastaliq Urdu', serif;">${msg}</span>`;
+        let msg = "براہ کرم پیج ریفریش کریں یا لوکیشن سیٹ کریں۔";
+        content.innerHTML = `
+            <div style="width:100%; text-align:center;">
+                <span style="font-size:0.85rem; color:#ff6b6b; display:block; margin-bottom:5px; font-family:'Noto Nastaliq Urdu', serif;">${msg}</span>
+                <button class="btn primary-btn" style="padding: 4px 10px; font-size: 0.7rem; width: auto;" onclick="renderPrayerTimesWidget()">دوبارہ کوشش کریں</button>
+            </div>
+        `;
     }
 };
 
 window.openPrayerModal = function() {
     const modal = document.getElementById('prayer-modal');
     const list = document.getElementById('full-prayer-times-list');
-    document.getElementById('modal-prayer-city').value = localStorage.getItem('islamic_city') || 'Islamabad';
+    
+    const lat = localStorage.getItem('islamic_lat');
+    const lng = localStorage.getItem('islamic_lng');
+    const cityInput = document.getElementById('modal-prayer-city');
+    
+    if (lat && lng) {
+        cityInput.value = '';
+        cityInput.placeholder = 'موجودہ لوکیشن استعمال ہو رہی ہے';
+    } else {
+        cityInput.value = localStorage.getItem('islamic_city') || 'Islamabad';
+        cityInput.placeholder = 'شہر کا نام (مثلاً Islamabad)';
+    }
     
     if (PrayerTimes.data && PrayerTimes.data.timings) {
         const t = PrayerTimes.data.timings;
@@ -1125,6 +1431,8 @@ window.saveModalCitySettings = async function() {
     const city = document.getElementById('modal-prayer-city').value;
     if(city) {
         localStorage.setItem('islamic_city', city);
+        localStorage.removeItem('islamic_lat');
+        localStorage.removeItem('islamic_lng');
         localStorage.removeItem('islamic_prayertimes');
         PrayerTimes.data = null;
         alert('شہر محفوظ ہو گیا۔ اوقات اپڈیٹ ہو رہے ہیں...');
@@ -1137,6 +1445,45 @@ window.saveModalCitySettings = async function() {
             renderPrayerTimesWidget();
         }
     }
+}
+
+window.useMyLocation = function() {
+    if (!navigator.geolocation) {
+        alert('آپ کا براؤزر لوکیشن کی سہولت فراہم نہیں کرتا۔');
+        return;
+    }
+
+    const btn = event.currentTarget;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>لوکیشن معلوم کی جا رہی ہے...</span>';
+    btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        localStorage.setItem('islamic_lat', position.coords.latitude);
+        localStorage.setItem('islamic_lng', position.coords.longitude);
+        localStorage.removeItem('islamic_city');
+        localStorage.removeItem('islamic_prayertimes');
+        PrayerTimes.data = null;
+        
+        alert('لوکیشن محفوظ ہو گئی۔ اوقات اپڈیٹ ہو رہے ہیں...');
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        closePrayerModal();
+        
+        if (document.getElementById('prayer-times-content')) {
+            document.getElementById('prayer-times-content').innerHTML = `<span style="width: 100%; text-align: center; color: var(--text-muted); font-size: 0.8rem;">اوقات معلوم کیے جا رہے ہیں...</span>`;
+        }
+        await PrayerTimes.init();
+        if(typeof renderPrayerTimesWidget === 'function') {
+            renderPrayerTimesWidget();
+        }
+    }, (error) => {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        let msg = 'لوکیشن حاصل کرنے میں ناکامی ہوئی۔';
+        if (error.code === 1) msg = 'براہ کرم لوکیشن کی اجازت دیں۔';
+        alert(msg);
+    });
 }
 // ─────────────── Backup & Restore ───────────────
 window.exportData = function() {
