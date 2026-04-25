@@ -1,0 +1,53 @@
+{
+  "name": "My Day - Islamic Tracker",
+  "short_name": "My Day",
+  "description": "Daily Islamic Routine and Prayer Tracker",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#fdbf24",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2913/2913158.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2913/2913158.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "فجر ادا کی",
+      "short_name": "فجر",
+      "url": "./index.html?action=mark&id=1",
+      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2913/2913158.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "ظہر ادا کی",
+      "short_name": "ظہر",
+      "url": "./index.html?action=mark&id=2",
+      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2913/2913158.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "عصر ادا کی",
+      "short_name": "عصر",
+      "url": "./index.html?action=mark&id=3",
+      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2913/2913158.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "مغرب ادا کی",
+      "short_name": "مغرب",
+      "url": "./index.html?action=mark&id=4",
+      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2913/2913158.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "عشاء ادا کی",
+      "short_name": "عشاء",
+      "url": "./index.html?action=mark&id=5",
+      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2913/2913158.png", "sizes": "192x192" }]
+    }
+  ]
+}

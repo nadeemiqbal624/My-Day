@@ -22,14 +22,236 @@ finalTasks.sort((a,b) => parseInt(a.id) - parseInt(b.id));
 const State = {
     tasks: finalTasks,
     logs: JSON.parse(localStorage.getItem('islamic_logs')) || [],
+    audioContext: null,
+    clickOscillator: null,
+
+    initAudio() {
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    },
+
+    playClick() {
+        if (localStorage.getItem('tasbeeh_audio') !== 'true') return;
+        this.initAudio();
+        
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, this.audioContext.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 0.1);
+        
+        gain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+        
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+        
+        osc.start();
+        osc.stop(this.audioContext.currentTime + 0.1);
+    },
 
     saveTasks() {
         localStorage.setItem('islamic_tasks', JSON.stringify(this.tasks));
+        this.triggerSync();
     },
     saveLogs() {
         localStorage.setItem('islamic_logs', JSON.stringify(this.logs));
+        this.autoBackup();
+        this.triggerSync();
+    },
+
+    autoBackup() {
+        const lastBackup = localStorage.getItem('last_auto_backup');
+        const now = Date.now();
+        // 24 hours backup
+        if (!lastBackup || now - parseInt(lastBackup) > 24 * 60 * 60 * 1000) {
+            const data = {
+                tasks: this.tasks,
+                logs: this.logs,
+                settings: {
+                    method: localStorage.getItem('islamic_method'),
+                    school: localStorage.getItem('islamic_school'),
+                    theme: document.body.classList.contains('light-theme') ? 'light' : 'dark',
+                    tasbeeh_audio: localStorage.getItem('tasbeeh_audio')
+                },
+                backupDate: new Date().toISOString()
+            };
+            localStorage.setItem('auto_backup_data', JSON.stringify(data));
+            localStorage.setItem('last_auto_backup', now.toString());
+            console.log('Auto-backup created locally');
+        }
+    },
+
+    async triggerSync() {
+        if (typeof GoogleDriveSync !== 'undefined') {
+            await GoogleDriveSync.sync();
+        }
     }
 };
+
+// ─────────────── Google Drive Sync Module ───────────────
+const GoogleDriveSync = {
+    CLIENT_ID: '', // User needs to provide this
+    API_KEY: '',    // User needs to provide this
+    DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+    SCOPES: 'https://www.googleapis.com/auth/drive.file',
+    
+    tokenClient: null,
+    gapiInited: false,
+    gisInited: false,
+    accessToken: localStorage.getItem('gdrive_token') || null,
+    fileId: localStorage.getItem('gdrive_file_id') || null,
+
+    init() {
+        if (typeof gapi === 'undefined') return;
+        gapi.load('client', async () => {
+            await gapi.client.init({
+                apiKey: this.API_KEY,
+                discoveryDocs: [this.DISCOVERY_DOC],
+            });
+            this.gapiInited = true;
+            this.updateUI();
+        });
+
+        if (typeof google === 'undefined') return;
+        this.tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: this.CLIENT_ID,
+            scope: this.SCOPES,
+            callback: (resp) => {
+                if (resp.error) return;
+                this.accessToken = resp.access_token;
+                localStorage.setItem('gdrive_token', this.accessToken);
+                this.updateUI();
+                this.sync();
+            },
+        });
+        this.gisInited = true;
+    },
+
+    async authenticate() {
+        if (!this.tokenClient) return;
+        // Request token
+        this.tokenClient.requestAccessToken({ prompt: 'consent' });
+    },
+
+    async sync() {
+        if (!this.accessToken || !navigator.onLine) return;
+        
+        try {
+            const data = {
+                tasks: State.tasks,
+                logs: State.logs,
+                settings: {
+                    method: localStorage.getItem('islamic_method'),
+                    school: localStorage.getItem('islamic_school'),
+                    tasbeeh_audio: localStorage.getItem('tasbeeh_audio')
+                },
+                lastSync: new Date().toISOString()
+            };
+
+            const fileName = 'my_day_routine_backup.json';
+            
+            // If we don't have fileId, search for it
+            if (!this.fileId) {
+                const response = await gapi.client.drive.files.list({
+                    q: `name = '${fileName}' and trashed = false`,
+                    fields: 'files(id, name)',
+                });
+                const files = response.result.files;
+                if (files && files.length > 0) {
+                    this.fileId = files[0].id;
+                    localStorage.setItem('gdrive_file_id', this.fileId);
+                }
+            }
+
+            const boundary = '-------314159265358979323846';
+            const delimiter = "\r\n--" + boundary + "\r\n";
+            const close_delim = "\r\n--" + boundary + "--";
+
+            const metadata = {
+                'name': fileName,
+                'mimeType': 'application/json'
+            };
+
+            const multipartRequestBody =
+                delimiter +
+                'Content-Type: application/json\r\n\r\n' +
+                JSON.stringify(metadata) +
+                delimiter +
+                'Content-Type: application/json\r\n\r\n' +
+                JSON.stringify(data) +
+                close_delim;
+
+            if (this.fileId) {
+                // Update existing file
+                await fetch(`https://www.googleapis.com/upload/drive/v3/files/${this.fileId}?uploadType=multipart`, {
+                    method: 'PATCH',
+                    headers: new Headers({
+                        'Authorization': 'Bearer ' + this.accessToken,
+                        'Content-Type': 'multipart/related; boundary=' + boundary
+                    }),
+                    body: multipartRequestBody
+                });
+            } else {
+                // Create new file
+                const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                    method: 'POST',
+                    headers: new Headers({
+                        'Authorization': 'Bearer ' + this.accessToken,
+                        'Content-Type': 'multipart/related; boundary=' + boundary
+                    }),
+                    body: multipartRequestBody
+                });
+                const file = await res.json();
+                this.fileId = file.id;
+                localStorage.setItem('gdrive_file_id', this.fileId);
+            }
+            
+            console.log('Synced to Google Drive successfully');
+            this.updateUI('synced');
+        } catch (err) {
+            console.error('Sync failed', err);
+            if (err.status === 401) {
+                // Token expired
+                this.accessToken = null;
+                this.updateUI();
+            }
+        }
+    },
+
+    updateUI(status = '') {
+        const syncText = document.getElementById('sync-text');
+        const authBtn = document.getElementById('gdrive-auth-btn');
+        if (!syncText || !authBtn) return;
+
+        if (this.accessToken) {
+            syncText.innerHTML = status === 'synced' 
+                ? 'گوگل ڈرائیو: سنک ہو گیا ✓' 
+                : 'گوگل ڈرائیو: منسلک ہے (سنک ہو رہا ہے...)';
+            authBtn.innerHTML = '<i class="fa-solid fa-rotate"></i> <span>دوبارہ سنک کریں</span>';
+            authBtn.style.background = '#34a853';
+        } else {
+            syncText.textContent = 'گوگل ڈرائیو سے منسلک نہیں ہے';
+            authBtn.innerHTML = '<i class="fa-brands fa-google"></i> <span>گوگل ڈرائیو سے منسلک کریں (Connect)</span>';
+            authBtn.style.background = '#4285F4';
+        }
+    }
+};
+
+window.handleGDriveAuth = function() {
+    if (!GoogleDriveSync.accessToken) {
+        GoogleDriveSync.authenticate();
+    } else {
+        GoogleDriveSync.sync();
+    }
+};
+
+// Initialize GDrive on load
+window.addEventListener('load', () => {
+    setTimeout(() => GoogleDriveSync.init(), 2000);
+});
 
 // Router & View Management
 const mainContent = document.getElementById('main-content');
@@ -39,6 +261,18 @@ const Views = {
     daily() {
         return `
             <div class="view-section">
+                <!-- PWA Install Banner (Hidden by default) -->
+                <div id="install-banner" class="glass" style="display: none; padding: 15px; margin-bottom: 20px; border: 1px solid var(--primary); background: rgba(253, 191, 36, 0.1); align-items: center; justify-content: space-between; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fa-solid fa-mobile-screen-button" style="font-size: 1.5rem; color: var(--primary);"></i>
+                        <div>
+                            <strong style="display: block; font-size: 0.9rem;">ایپ انسٹال کریں</strong>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">بہتر تجربے اور فوری رسائی کے لیے</span>
+                        </div>
+                    </div>
+                    <button class="btn primary-btn" style="width: auto; padding: 8px 15px; font-size: 0.85rem;" onclick="handleInstallClick()">انسٹال</button>
+                </div>
+
                 <!-- Prayer Times Header Widget -->
                 <div id="prayer-times-widget" class="glass" style="padding: 15px; margin-bottom: 20px; border-width: 1px; cursor:pointer;" onclick="openPrayerModal()">
                     <div id="prayer-times-content" style="display: flex; flex-direction: column; align-items: center; gap: 15px; font-family: 'Inter', sans-serif;">
@@ -68,18 +302,40 @@ const Views = {
                     </button>
                 </div>
 
-                <!-- Backup & Restore -->
-                <h3 style="margin-bottom: 10px; margin-top: 0; font-size: 1rem; color: var(--primary);">ڈیٹا بیک اپ اور ریسٹور</h3>
-                <div class="glass" style="padding: 15px; margin-bottom: 20px; border-width: 1px;">
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.6;">تمام قضا ریکارڈ، معمولات اور لاگز کو JSON فائل میں محفوظ کریں۔</p>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn primary-btn" style="flex:1;" onclick="exportData()">💾 ڈاؤنلوڈ (Export)</button>
-                        <button class="btn primary-btn" style="flex:1; background: rgba(212,175,55,0.15); color: var(--primary);" onclick="document.getElementById('import-file').click()">📂 لوڈ (Import)</button>
-                    </div>
-                    <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)" />
+        <!-- Backup & Restore -->
+        <h3 style="margin-bottom: 10px; margin-top: 0; font-size: 1rem; color: var(--primary);">ڈیٹا بیک اپ اور سنک (Google Drive)</h3>
+        <div class="glass" style="padding: 15px; margin-bottom: 20px; border-width: 1px;">
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.6;">اپنے ڈیٹا کو گوگل ڈرائیو کے ساتھ سنک کریں تاکہ یہ خود بخود محفوظ ہوتا رہے۔</p>
+            
+            <div id="gdrive-sync-status" style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2); font-size: 0.85rem; display: flex; align-items: center; gap: 10px;">
+                <i class="fa-brands fa-google-drive" style="color: #34a853; font-size: 1.2rem;"></i>
+                <span id="sync-text" style="color: var(--text-main);">گوگل ڈرائیو سے منسلک نہیں ہے</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button id="gdrive-auth-btn" class="btn" style="width: 100%; background: #4285F4; color: white; border: none; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="handleGDriveAuth()">
+                    <i class="fa-brands fa-google"></i>
+                    <span>گوگل ڈرائیو سے منسلک کریں (Connect)</span>
+                </button>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn primary-btn" style="flex:1;" onclick="exportData()">💾 ڈاؤنلوڈ (Export)</button>
+                    <button class="btn primary-btn" style="flex:1; background: rgba(212,175,55,0.15); color: var(--primary);" onclick="document.getElementById('import-file').click()">📂 لوڈ (Import)</button>
                 </div>
+                <button class="btn" style="width: 100%; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; font-size: 0.85rem;" onclick="restoreFromAutoBackup()">🔄 آٹو بیک اپ سے بحال کریں (Restore Auto)</button>
+            </div>
+            <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)" />
+        </div>
 
                 <!-- Prayer Times Settings -->
+                <h3 style="margin-bottom: 10px; margin-top: 20px; font-size: 1rem; color: var(--primary);">آڈیو سیٹنگز</h3>
+                <div class="glass" style="padding: 15px; margin-bottom: 20px; border-width: 1px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.9rem; color: var(--text-main);">تسبیح پر آواز (Click Sound)</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="audio-toggle" ${localStorage.getItem('tasbeeh_audio') === 'true' ? 'checked' : ''} onchange="localStorage.setItem('tasbeeh_audio', this.checked)">
+                    </div>
+                </div>
+
                 <h3 style="margin-bottom: 10px; margin-top: 20px; font-size: 1rem; color: var(--primary);">اوقاتِ نماز کی سیٹنگز</h3>
                 <div class="glass" style="padding: 15px; margin-bottom: 20px; border-width: 1px;">
                     <div class="form-group" style="margin-bottom: 15px;">
@@ -133,7 +389,7 @@ const Views = {
                         </div>
                         <div class="form-group" id="target-count-group" style="display: none;">
                             <label>تعداد (Target)</label>
-                            <input type="number" id="task-target" value="100" min="1" />
+                            <input type="number" id="task-target" placeholder="100" min="1" />
                         </div>
                         <button type="submit" class="btn primary-btn">شامل کریں</button>
                     </form>
@@ -162,26 +418,48 @@ const Views = {
                 
                 <h3 style="margin-top:30px; font-size: 1.1rem; color: var(--primary); text-align: center;">سابقہ قضا شامل کریں (بلک)</h3>
                 <div class="glass form-container" style="margin-top:10px; border-width: 1px;">
+                    <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; margin-bottom:15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                            <label style="font-size:0.75rem;">فجر</label>
+                            <input type="checkbox" id="bulk-prayer-1" checked style="width:18px; height:18px; cursor:pointer;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                            <label style="font-size:0.75rem;">ظہر</label>
+                            <input type="checkbox" id="bulk-prayer-2" checked style="width:18px; height:18px; cursor:pointer;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                            <label style="font-size:0.75rem;">عصر</label>
+                            <input type="checkbox" id="bulk-prayer-3" checked style="width:18px; height:18px; cursor:pointer;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                            <label style="font-size:0.75rem;">مغرب</label>
+                            <input type="checkbox" id="bulk-prayer-4" checked style="width:18px; height:18px; cursor:pointer;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                            <label style="font-size:0.75rem;">عشاء</label>
+                            <input type="checkbox" id="bulk-prayer-5" checked style="width:18px; height:18px; cursor:pointer;" />
+                        </div>
+                    </div>
                     <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:15px;">
                         <div>
                             <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">سال</label>
-                            <input type="number" id="bulk-years" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
+                            <input type="number" id="bulk-years" placeholder="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
                         </div>
                         <div>
                             <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">مہینے</label>
-                            <input type="number" id="bulk-months" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
+                            <input type="number" id="bulk-months" placeholder="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
                         </div>
                         <div>
                             <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">ہفتے</label>
-                            <input type="number" id="bulk-weeks" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
+                            <input type="number" id="bulk-weeks" placeholder="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
                         </div>
                         <div>
                             <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">دن</label>
-                            <input type="number" id="bulk-days" value="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
+                            <input type="number" id="bulk-days" placeholder="0" min="0" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.5); border:1px solid var(--card-border); border-radius:5px; color:#fff; font-family: inherit; text-align:center;" />
                         </div>
                     </div>
-                    <button class="btn primary-btn" onclick="addBulkQaza()">تمام نمازوں میں شامل کریں</button>
-                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:8px; text-align:center;">یہ آپ کے درج کردہ عرصے کے مطابق پانچوں نمازوں کی قضا شامل کر دے گا۔</p>
+                    <button class="btn primary-btn" onclick="addBulkQaza()">منتخب نمازوں میں شامل کریں</button>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:8px; text-align:center;">یہ آپ کے درج کردہ عرصے کے مطابق منتخب نمازوں کی قضا شامل کر دے گا۔</p>
                 </div>
             </div>
         `;
@@ -239,7 +517,7 @@ const Views = {
                     </div>
                     <div class="form-group">
                         <label>ہدف (تعداد)</label>
-                        <input type="number" id="new-tasbeeh-target" value="${savedTarget}" min="1" style="width:100%; padding:0.6rem; background:rgba(0,0,0,0.4); border:1px solid var(--card-border); border-radius:8px; color:#fff; font-family:inherit; font-size:1rem;"/>
+                        <input type="number" id="new-tasbeeh-target" placeholder="${savedTarget}" min="1" style="width:100%; padding:0.6rem; background:rgba(0,0,0,0.4); border:1px solid var(--card-border); border-radius:8px; color:#fff; font-family:inherit; font-size:1rem;"/>
                     </div>
                     <button class="btn primary-btn" onclick="saveTasbeehSettings()">محفوظ کریں</button>
                 </div>
@@ -1102,12 +1380,84 @@ function renderChart() {
     });
 }
 
+// PWA Install Logic
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent the mini-infobar from appearing on mobile
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    // Show the install banner
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'flex';
+});
+
+window.handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    // Show the install prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    // We've used the prompt, and can't use it again, throw it away
+    deferredPrompt = null;
+    // Hide the install banner
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'none';
+};
+
+window.addEventListener('appinstalled', (event) => {
+    console.log('App was installed.');
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'none';
+});
+
 // App Initialization
 function initApp() {
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker Registered'))
+            .catch(err => console.log('Service Worker Failed', err));
+    }
+
     checkMidnightReset();
     initTheme();
+    
+    // Handle URL Actions (Shortcuts)
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    const id = urlParams.get('id');
+    
+    if (action === 'mark' && id) {
+        handleQuickMark(id);
+    }
+
     // Initial Route
     navigateTo('daily');
+}
+
+function handleQuickMark(taskId) {
+    const today = new Date().toISOString().split('T')[0];
+    const task = State.tasks.find(t => t.id === taskId);
+    
+    if (task) {
+        const existingLog = State.logs.find(l => l.taskId === taskId && l.date === today);
+        if (!existingLog) {
+            State.logs.push({
+                taskId: taskId,
+                date: today,
+                completed: true,
+                count: task.target || 0,
+                timestamp: new Date().toISOString()
+            });
+            State.saveLogs();
+            alert(`${task.name} کو ادا شدہ نشان زد کر دیا گیا ہے۔`);
+        }
+    }
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 // ─────────────── Theme Management ───────────────
@@ -1152,6 +1502,19 @@ window.addBulkQaza = function() {
     const weeks = parseInt(document.getElementById('bulk-weeks').value) || 0;
     const days = parseInt(document.getElementById('bulk-days').value) || 0;
     
+    // Get selected prayers
+    const selectedPrayers = [];
+    if (document.getElementById('bulk-prayer-1').checked) selectedPrayers.push('1');
+    if (document.getElementById('bulk-prayer-2').checked) selectedPrayers.push('2');
+    if (document.getElementById('bulk-prayer-3').checked) selectedPrayers.push('3');
+    if (document.getElementById('bulk-prayer-4').checked) selectedPrayers.push('4');
+    if (document.getElementById('bulk-prayer-5').checked) selectedPrayers.push('5');
+
+    if (selectedPrayers.length === 0) {
+        alert('براہ کرم کم از کم ایک نماز منتخب کریں۔');
+        return;
+    }
+    
     if (years === 0 && months === 0 && weeks === 0 && days === 0) {
         alert('براہ کرم دورانیہ (سال، مہینے، ہفتے یا دن) درج کریں۔');
         return;
@@ -1159,22 +1522,22 @@ window.addBulkQaza = function() {
     
     const totalDays = (years * 365) + (months * 30) + (weeks * 7) + days;
     
-    if (confirm(`کیا آپ واقعی ${totalDays} دنوں کی قضا نمازیں (فرائض) میں شامل کرنا چاہتے ہیں؟`)) {
+    if (confirm(`کیا آپ واقعی منتخب نمازوں میں ${totalDays} دنوں کی قضا شامل کرنا چاہتے ہیں؟`)) {
         State.tasks.forEach(task => {
-            if (task.category === 'faraidh' && task.isSystem) {
+            if (task.category === 'faraidh' && task.isSystem && selectedPrayers.includes(task.id)) {
                 if (!task.bulkQaza) task.bulkQaza = 0;
                 task.bulkQaza += totalDays;
             }
         });
         State.saveTasks();
         
-        document.getElementById('bulk-years').value = 0;
-        document.getElementById('bulk-months').value = 0;
-        document.getElementById('bulk-weeks').value = 0;
-        document.getElementById('bulk-days').value = 0;
+        document.getElementById('bulk-years').value = "";
+        document.getElementById('bulk-months').value = "";
+        document.getElementById('bulk-weeks').value = "";
+        document.getElementById('bulk-days').value = "";
         
         if (typeof renderQazaTasks === 'function') renderQazaTasks();
-        alert(`${totalDays} دنوں کی نمازیں قضا کھاتے میں شامل کر دی گئی ہیں۔`);
+        alert(`${totalDays} دنوں کی منتخب نمازیں قضا کھاتے میں شامل کر دی گئی ہیں۔`);
     }
 }
 
@@ -1486,6 +1849,27 @@ window.useMyLocation = function() {
     });
 }
 // ─────────────── Backup & Restore ───────────────
+window.restoreFromAutoBackup = function() {
+    const autoData = localStorage.getItem('auto_backup_data');
+    if (!autoData) {
+        alert('کوئی آٹو بیک اپ نہیں ملا۔');
+        return;
+    }
+    
+    if (confirm('کیا آپ واقعی آٹو بیک اپ سے ڈیٹا بحال کرنا چاہتے ہیں؟ موجودہ ڈیٹا تبدیل ہو جائے گا۔')) {
+        const data = JSON.parse(autoData);
+        if (data.tasks) localStorage.setItem('islamic_tasks', JSON.stringify(data.tasks));
+        if (data.logs) localStorage.setItem('islamic_logs', JSON.stringify(data.logs));
+        if (data.settings) {
+            if (data.settings.method) localStorage.setItem('islamic_method', data.settings.method);
+            if (data.settings.school) localStorage.setItem('islamic_school', data.settings.school);
+            if (data.settings.tasbeeh_audio) localStorage.setItem('tasbeeh_audio', data.settings.tasbeeh_audio);
+        }
+        alert('ڈیٹا کامیابی سے بحال کر دیا گیا ہے۔ ایپ ری لوڈ ہو رہی ہے...');
+        window.location.reload();
+    }
+};
+
 window.exportData = function() {
     const backup = {
         version: 1,
@@ -1539,6 +1923,7 @@ window.importData = function(event) {
 let tasbeehCount = 0;
 
 window.incrementTasbeeh = function() {
+    State.playClick();
     tasbeehCount++;
     const target = parseInt(localStorage.getItem('tasbeeh_target')) || 33;
     
